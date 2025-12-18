@@ -19,6 +19,7 @@ import AdminBlogEditorPage from "@/pages/admin/AdminBlogEditorPage";
 import AdminReposPage from "@/pages/admin/AdminReposPage";
 import { AuthGuard } from "@/components/admin/AuthGuard";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
         <Route path="*" element={<div>404 - Page not found</div>} />
       </Routes>
       <Toaster />
+      <Analytics />
     </BrowserRouter>
   );
 }
