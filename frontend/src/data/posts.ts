@@ -10,6 +10,7 @@ export interface Post {
 }
 
 import { fetchPostsPublic } from "./adminPosts";
+import { getTextFromJson, parseJsonDoc } from "@/lib/editor";
 
 export const posts: Post[] = [];
 
@@ -28,7 +29,9 @@ let cachedPosts: Post[] | null = null;
 let inflight: Promise<Post[]> | null = null;
 
 const computeReadTime = (content: string) => {
-  const words = content?.split(/\s+/).filter(Boolean).length || 0;
+  const doc = parseJsonDoc(content);
+  const text = doc ? getTextFromJson(doc) : content;
+  const words = text?.split(/\s+/).filter(Boolean).length || 0;
   const minutes = Math.max(1, Math.ceil(words / 200));
   return `${minutes} min read`;
 };

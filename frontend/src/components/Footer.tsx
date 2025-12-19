@@ -1,13 +1,8 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Github, Twitter, Linkedin, Mail } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-
-const socialLinks = [
-  { icon: Github, href: "https://github.com", label: "GitHub" },
-  { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
-  { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
-  { icon: Mail, href: "mailto:hello@example.com", label: "Email" },
-];
+import { fetchSiteSettings, defaultSiteSettings } from "@/data/siteSettings";
 
 const footerLinks = [
   { href: "/projects", label: "Projects" },
@@ -19,6 +14,22 @@ const footerLinks = [
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const [settings, setSettings] = useState(defaultSiteSettings);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  useEffect(() => {
+    fetchSiteSettings(true)
+      .then((data) => setSettings({ ...defaultSiteSettings, ...data }))
+      .catch(() => setSettings(defaultSiteSettings))
+      .finally(() => setSettingsLoaded(true));
+  }, []);
+
+  const socialLinks = [
+    { icon: Github, href: settings.socialLinks.github, label: "GitHub" },
+    { icon: Twitter, href: settings.socialLinks.twitter || "", label: "Twitter" },
+    { icon: Linkedin, href: settings.socialLinks.linkedin, label: "LinkedIn" },
+    { icon: Mail, href: `mailto:${settings.socialLinks.email}`, label: "Email" },
+  ].filter((item) => item.href);
 
   return (
     <footer className="bg-muted/30 border-t border-border">
@@ -30,11 +41,10 @@ export function Footer() {
               to="/"
               className="font-serif text-2xl font-semibold tracking-tight"
             >
-              Minh Duc
+              {settingsLoaded ? settings.siteTitle : defaultSiteSettings.siteTitle}
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs">
-              Full-stack developer crafting thoughtful digital experiences.
-              Always learning, always building.
+              {settingsLoaded ? settings.tagline : defaultSiteSettings.tagline}
             </p>
           </div>
 

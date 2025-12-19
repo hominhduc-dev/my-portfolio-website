@@ -7,7 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { FormSection } from '@/components/admin/FormSection';
-import { fetchSiteSettings, updateSiteSettings, uploadAvatar, uploadResume, defaultSiteSettings, SiteSettings } from '@/data/siteSettings';
+import {
+  fetchSiteSettings,
+  updateSiteSettings,
+  uploadResume,
+  updateResumeUrl,
+  defaultSiteSettings,
+  SiteSettings,
+} from '@/data/siteSettings';
 import { Save, RotateCcw } from 'lucide-react';
 
 export default function AdminSettingsPage() {
@@ -15,7 +22,6 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SiteSettings>(defaultSiteSettings);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,32 +71,15 @@ export default function AdminSettingsPage() {
     toast({ title: 'Settings reset', description: 'Site settings have been reset to defaults.' });
   };
 
-  const handleAvatarUpload = async (file: File | undefined) => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      const url = await uploadAvatar(file, settings.avatarUrl);
-      if (url) {
-        setSettings((prev) => ({ ...prev, avatarUrl: url }));
-        toast({ title: 'Avatar uploaded', description: 'Image uploaded to storage.' });
-      } else {
-        toast({ title: 'Upload failed', description: 'No URL returned.', variant: 'destructive' });
-      }
-    } catch (error) {
-      toast({ title: 'Upload error', description: 'Could not upload avatar.', variant: 'destructive' });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleResumeUpload = async (file: File | undefined) => {
     if (!file) return;
     setUploadingResume(true);
     try {
       const url = await uploadResume(file, settings.resumeUrl);
       if (url) {
-        setSettings((prev) => ({ ...prev, resumeUrl: url }));
-        toast({ title: 'Resume uploaded', description: 'File uploaded to storage.' });
+        const next = await updateResumeUrl(url);
+        setSettings(next);
+        toast({ title: 'Resume uploaded', description: 'File uploaded and saved.' });
       } else {
         toast({ title: 'Upload failed', description: 'No URL returned.', variant: 'destructive' });
       }
@@ -159,31 +148,6 @@ export default function AdminSettingsPage() {
                 onChange={(e) => handleChange('heroIntro', e.target.value)}
                 rows={3}
               />
-            </div>
-          </FormSection>
-
-          <Separator />
-
-          <FormSection title="Avatar">
-            <div className="flex items-start gap-4">
-              <img
-                src={settings.avatarUrl}
-                alt="Avatar preview"
-                className="h-20 w-20 rounded-full object-cover border"
-              />
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="avatarFile">Upload Avatar</Label>
-                <Input
-                  id="avatarFile"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
-                  disabled={uploading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Choose an image file; it will be uploaded and saved in settings.
-                </p>
-              </div>
             </div>
           </FormSection>
 

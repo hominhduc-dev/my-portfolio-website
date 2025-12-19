@@ -91,7 +91,8 @@ export default function HomePage() {
               <div className="h-20 w-20 rounded-full bg-muted animate-pulse border" />
             )} */}
             <h1 className="font-serif text-5xl md:text-7xl font-medium tracking-tight">
-              {settings.siteTitle || "Portfolio"}
+              Minh Duc
+              {/* {settings.siteTitle || "Portfolio"} */}
             </h1>
           </div>
           <p className="text-xl md:text-2xl text-muted-foreground mb-4">

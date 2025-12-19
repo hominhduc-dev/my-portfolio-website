@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 interface AdminHeaderProps {
   sidebarCollapsed: boolean;
   onSidebarToggle: () => void;
+  onMobileToggle: () => void;
 }
 
 function getBreadcrumbs(pathname: string): { label: string; path: string }[] {
@@ -28,12 +29,19 @@ function getBreadcrumbs(pathname: string): { label: string; path: string }[] {
   return breadcrumbs;
 }
 
-export function AdminHeader({ sidebarCollapsed, onSidebarToggle }: AdminHeaderProps) {
+export function AdminHeader({ sidebarCollapsed, onSidebarToggle, onMobileToggle }: AdminHeaderProps) {
   const location = useLocation();
   const breadcrumbs = getBreadcrumbs(location.pathname);
   const [theme, setTheme] = React.useState<'light' | 'dark'>('light');
 
   React.useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") {
+      const isDarkStored = stored === "dark";
+      setTheme(isDarkStored ? "dark" : "light");
+      document.documentElement.classList.toggle("dark", isDarkStored);
+      return;
+    }
     const isDark = document.documentElement.classList.contains('dark');
     setTheme(isDark ? 'dark' : 'light');
   }, []);
@@ -41,14 +49,15 @@ export function AdminHeader({ sidebarCollapsed, onSidebarToggle }: AdminHeaderPr
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    document.documentElement.classList.toggle('dark');
+    document.documentElement.classList.toggle('dark', newTheme === "dark");
+    localStorage.setItem("theme", newTheme);
   };
 
   return (
     <header
       className={cn(
         'fixed top-0 right-0 z-30 h-16 bg-background/95 backdrop-blur border-b border-border transition-all duration-300',
-        sidebarCollapsed ? 'left-16' : 'left-64'
+        sidebarCollapsed ? 'left-0 md:left-16' : 'left-0 md:left-64'
       )}
     >
       <div className="flex items-center justify-between h-full px-6">
@@ -57,7 +66,7 @@ export function AdminHeader({ sidebarCollapsed, onSidebarToggle }: AdminHeaderPr
           variant="ghost"
           size="icon"
           className="md:hidden"
-          onClick={onSidebarToggle}
+          onClick={onMobileToggle}
         >
           <Menu className="h-5 w-5" />
         </Button>

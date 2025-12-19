@@ -7,6 +7,7 @@ import { fetchSiteSettings, defaultSiteSettings } from "@/data/siteSettings";
 import { fetchSkillsData, defaultSkillsData, SkillsData } from "@/data/skills";
 import { fetchAboutData, defaultAboutData, AboutData } from "@/data/about";
 import { useEffect, useState } from "react";
+import { MapPin } from "lucide-react";
 
 export default function AboutPage() {
   const [settings, setSettings] = useState(defaultSiteSettings);
@@ -37,19 +38,29 @@ export default function AboutPage() {
       <main className="pt-24 pb-16 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="flex flex-col md:flex-row gap-8 mb-16">
-            {settingsLoaded ? (
-              <img
-                src={settings.avatarUrl}
-                alt={settings.siteTitle}
-                className="w-32 h-32 rounded-full object-cover border"
-              />
+            {aboutLoaded ? (
+              about.avatarUrl ? (
+                <img
+                  src={about.avatarUrl}
+                  alt={settings.siteTitle}
+                  className="w-40 h-40 rounded-full object-cover border"
+                />
+              ) : (
+                <div className="w-40 h-40 rounded-full bg-muted border" />
+              )
             ) : (
-              <div className="w-32 h-32 rounded-full bg-muted animate-pulse border" />
+              <div className="w-40 h-40 rounded-full bg-muted animate-pulse border" />
             )}
             <div>
-              <h1 className="font-serif text-4xl font-medium mb-2">{settings.siteTitle}</h1>
+              {/* <h1 className="font-serif text-4xl font-medium mb-2">{settings.siteTitle}</h1> */}
+              <h1 className="font-serif text-4xl font-medium mb-2">Ho Minh Duc</h1>
               <p className="text-xl text-muted-foreground mb-4">{settings.tagline}</p>
-              <p className="text-muted-foreground">San Francisco, CA</p>
+              {about.location && (
+                <p className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="h-4 w-4" aria-hidden="true" />
+                  {about.location}
+                </p>
+              )}
             </div>
           </div>
 

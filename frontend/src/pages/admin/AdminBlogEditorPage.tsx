@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,11 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { fetchPostById, createPost, updatePost, deletePost, AdminPost } from '@/data/adminPosts';
 import { Save, Trash2, ArrowLeft } from 'lucide-react';
+import DOMPurify from 'dompurify';
+import { highlightCodeBlocks } from '@/lib/highlight';
+import {
+  ARTICLE_PROSE_CLASSES,
+  composeDocFromFields,
+  extractPostFieldsFromDoc,
+  getHtmlFromJson,
+  parseJsonDoc,
+} from '@/lib/editor';
+import { uploadMedia } from '@/lib/uploads';
 
 const slugify = (text: string) =>
   text
@@ -29,6 +40,7 @@ export default function AdminBlogEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const isNew = !id || id === 'new';
 
   const [post, setPost] = useState<AdminPost>({
@@ -46,6 +58,25 @@ export default function AdminBlogEditorPage() {
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [loading, setLoading] = useState(!isNew);
+  const [contentTab, setContentTab] = useState<'write' | 'preview'>('write');
+  const [editorContent, setEditorContent] = useState<string>('');
+  const lastSavedRef = useRef<string>('');
+
+  const editorDoc = useMemo(() => parseJsonDoc(editorContent) || { type: 'doc', content: [] }, [editorContent]);
+  const extracted = useMemo(() => extractPostFieldsFromDoc(editorDoc), [editorDoc]);
+  const bodyJson = useMemo(() => JSON.stringify(extracted.body), [extracted.body]);
+
+  const sanitizedPreview = useMemo(() => {
+    const bodyDoc = extracted.body;
+    if (!bodyDoc || !Array.isArray(bodyDoc.content) || bodyDoc.content.length === 0) {
+      return '<p class="text-muted-foreground">No content yet.</p>';
+    }
+    const html = getHtmlFromJson(bodyDoc);
+    return DOMPurify.sanitize(html, {
+      ADD_TAGS: ["iframe"],
+      ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "src", "title", "width", "height"],
+    });
+  }, [extracted.body]);
 
   useEffect(() => {
     if (!isNew && id) {
@@ -53,36 +84,47 @@ export default function AdminBlogEditorPage() {
         .then((existing) => {
           if (existing) {
             setPost(existing);
+            const bodyDoc = parseJsonDoc(existing.content) || { type: 'doc', content: [] };
+            const fullDoc = composeDocFromFields(existing.title, existing.excerpt, bodyDoc);
+            setEditorContent(JSON.stringify(fullDoc));
           } else {
             navigate('/admin/blog');
           }
         })
         .finally(() => setLoading(false));
     }
+    if (isNew) {
+      const fullDoc = composeDocFromFields('', '', { type: 'doc', content: [] });
+      setEditorContent(JSON.stringify(fullDoc));
+      setLoading(false);
+    }
   }, [id, isNew, navigate]);
 
   const handleChange = (field: keyof AdminPost, value: any) => {
     setPost((prev) => {
-      if (field === 'title') {
-        const nextSlug = prev.slug ? prev.slug : slugify(value);
-        return { ...prev, title: value, slug: nextSlug };
-      }
       return { ...prev, [field]: value };
     });
   };
 
   const generateSlug = () => {
-    const slug = slugify(post.title) || post.slug;
+    const slug = slugify(extracted.title) || post.slug;
     handleChange('slug', slug);
   };
 
   const handleSave = async (status?: 'draft' | 'published') => {
-    if (!post.title.trim()) {
+    if (!extracted.title.trim()) {
       toast({ title: 'Error', description: 'Title is required.', variant: 'destructive' });
       return;
     }
     setSaving(true);
-    const updated = { ...post, status: status || post.status };
+    const updated = {
+      ...post,
+      title: extracted.title,
+      excerpt: extracted.excerpt,
+      content: bodyJson,
+      slug: post.slug || slugify(extracted.title),
+      status: status || post.status,
+    };
     try {
       let saved: AdminPost;
       if (isNew) {
@@ -92,6 +134,15 @@ export default function AdminBlogEditorPage() {
         saved = await updatePost(updated);
       }
       setPost(saved);
+      lastSavedRef.current = JSON.stringify({
+        title: saved.title,
+        excerpt: saved.excerpt,
+        content: saved.content,
+        slug: saved.slug,
+        category: saved.category,
+        coverImageUrl: saved.coverImageUrl,
+        status: saved.status,
+      });
       toast({
         title: isNew ? 'Post created' : 'Post saved',
         description: status === 'published' ? 'Your post is now live.' : 'Your changes have been saved.',
@@ -111,6 +162,59 @@ export default function AdminBlogEditorPage() {
       })
       .catch(() => toast({ title: 'Error', description: 'Failed to delete post', variant: 'destructive' }));
   };
+
+  useEffect(() => {
+    if (!extracted.title || post.slug) return;
+    setPost((prev) => ({ ...prev, slug: slugify(extracted.title) }));
+  }, [extracted.title, post.slug]);
+
+  useEffect(() => {
+    if (loading) return;
+    const snapshot = JSON.stringify({
+      title: extracted.title,
+      excerpt: extracted.excerpt,
+      content: bodyJson,
+      slug: post.slug,
+      category: post.category,
+      coverImageUrl: post.coverImageUrl,
+      status: post.status,
+    });
+    if (snapshot === lastSavedRef.current) return;
+    const timer = window.setTimeout(async () => {
+      if (!extracted.title.trim()) return;
+      const payload: AdminPost = {
+        ...post,
+        title: extracted.title,
+        excerpt: extracted.excerpt,
+        content: bodyJson,
+        slug: post.slug || slugify(extracted.title),
+        status: post.status || 'draft',
+      };
+      try {
+        const saved = isNew ? await createPost(payload) : await updatePost(payload);
+        if (isNew) {
+          navigate(`/admin/blog/${saved.id}/edit`, { replace: true });
+        }
+        setPost(saved);
+        lastSavedRef.current = JSON.stringify({
+          title: saved.title,
+          excerpt: saved.excerpt,
+          content: saved.content,
+          slug: saved.slug,
+          category: saved.category,
+          coverImageUrl: saved.coverImageUrl,
+          status: saved.status,
+        });
+      } catch {
+        // silent autosave failure
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [bodyJson, extracted.excerpt, extracted.title, isNew, loading, navigate, post, post.category, post.coverImageUrl, post.slug, post.status]);
+
+  useEffect(() => {
+    highlightCodeBlocks(previewRef.current);
+  }, [sanitizedPreview]);
 
   if (loading) {
     return <p className="text-muted-foreground">Loading post...</p>;
@@ -152,10 +256,11 @@ export default function AdminBlogEditorPage() {
               <div className="space-y-2">
                 <Label>Title</Label>
                 <Input
-                  value={post.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                  placeholder="Post Title"
+                  value={extracted.title}
+                  readOnly
+                  placeholder="Type the title as the first line in the editor"
                 />
+                <p className="text-xs text-muted-foreground">Title is taken from the first line of the editor.</p>
               </div>
               <div className="space-y-2">
                 <Label>Slug</Label>
@@ -173,19 +278,41 @@ export default function AdminBlogEditorPage() {
               <div className="space-y-2">
                 <Label>Excerpt</Label>
                 <Textarea
-                  value={post.excerpt}
-                  onChange={(e) => handleChange('excerpt', e.target.value)}
-                  placeholder="A brief summary for previews"
+                  value={extracted.excerpt}
+                  readOnly
+                  placeholder="Type the excerpt as the second line in the editor"
                   rows={2}
                 />
+                <p className="text-xs text-muted-foreground">Excerpt is taken from the second line of the editor.</p>
               </div>
               <div className="space-y-2">
                 <Label>Content</Label>
-                <RichTextEditor
-                  value={post.content}
-                  onChange={(value) => handleChange('content', value)}
-                  placeholder="Write your blog post..."
-                />
+                <Tabs value={contentTab} onValueChange={(v) => setContentTab(v as 'write' | 'preview')}>
+                  <TabsList className="mb-2 w-full justify-start">
+                    <TabsTrigger value="write">Write</TabsTrigger>
+                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="write" className="mt-0">
+                    <RichTextEditor
+                      value={editorContent}
+                      onChange={setEditorContent}
+                      placeholder="Write your blog post..."
+                      onImageUpload={uploadMedia}
+                    />
+                  </TabsContent>
+                  <TabsContent value="preview" className="mt-0">
+                    <div className="rounded-lg border border-border bg-card/50 dark:bg-muted/30 p-4 min-h-[200px]">
+                      {extracted.title && (
+                        <h1 className="font-serif text-3xl md:text-[52px] font-semibold mb-6 text-[#111] dark:text-[#f5f5f5] leading-tight">
+                          {extracted.title}
+                        </h1>
+                      )}
+                    <div className={ARTICLE_PROSE_CLASSES} ref={previewRef}>
+                      <div dangerouslySetInnerHTML={{ __html: sanitizedPreview }} />
+                    </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             </CardContent>
           </Card>

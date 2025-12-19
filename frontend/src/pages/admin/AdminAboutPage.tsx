@@ -8,7 +8,14 @@ import { useToast } from '@/hooks/use-toast';
 import { FormSection } from '@/components/admin/FormSection';
 import { MarkdownEditor } from '@/components/admin/MarkdownEditor';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
-import { fetchAboutData, saveAboutData, defaultAboutData, AboutData, TimelineItem } from '@/data/about';
+import {
+  fetchAboutData,
+  saveAboutData,
+  defaultAboutData,
+  AboutData,
+  TimelineItem,
+  uploadAboutAvatar,
+} from '@/data/about';
 import { Save, Plus, Trash2, GripVertical } from 'lucide-react';
 
 function TimelineEditor({
@@ -114,6 +121,7 @@ export default function AdminAboutPage() {
   const [data, setData] = useState<AboutData>(defaultAboutData);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     fetchAboutData()
@@ -131,6 +139,24 @@ export default function AdminAboutPage() {
       toast({ title: 'Error', description: 'Failed to save', variant: 'destructive' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (file?: File) => {
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadAboutAvatar(file, data.avatarUrl || undefined);
+      if (url) {
+        setData((prev) => ({ ...prev, avatarUrl: url }));
+        toast({ title: 'Avatar uploaded', description: 'Image uploaded to storage.' });
+      } else {
+        toast({ title: 'Upload failed', description: 'No URL returned.', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Upload error', description: 'Could not upload avatar.', variant: 'destructive' });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -158,6 +184,37 @@ export default function AdminAboutPage() {
           <CardTitle>Bio</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <Label>Avatar</Label>
+            <div className="flex items-center gap-4">
+              {data.avatarUrl ? (
+                <img
+                  src={data.avatarUrl}
+                  alt="Avatar"
+                  className="h-40 w-40 rounded-full object-cover border"
+                />
+              ) : (
+                <div className="h-40 w-40 rounded-full bg-muted border" />
+              )}
+              <div className="space-y-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
+                  disabled={uploadingAvatar}
+                />
+                <p className="text-xs text-muted-foreground">Upload a profile image for About page.</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Input
+              value={data.location || ''}
+              onChange={(e) => setData({ ...data, location: e.target.value })}
+              placeholder="City, Country"
+            />
+          </div>
           <div className="space-y-2">
             <Label>Short Bio</Label>
             <Input

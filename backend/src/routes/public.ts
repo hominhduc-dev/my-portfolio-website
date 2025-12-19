@@ -34,6 +34,8 @@ router.get("/about", async (_req, res) => {
     });
     if (!about) return sendOk(res, null);
     const payload = {
+      avatarUrl: about.avatarUrl ?? null,
+      location: about.location ?? null,
       shortBio: about.shortBio,
       longStory: about.longStory,
       education: about.timelines.filter((t) => t.type === "education"),

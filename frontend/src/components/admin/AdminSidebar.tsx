@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -20,6 +21,8 @@ import { Separator } from '@/components/ui/separator';
 interface AdminSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
 const navItems = [
@@ -32,9 +35,10 @@ const navItems = [
   { path: '/admin/blog', label: 'Blog', icon: FileText },
 ];
 
-export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
+export function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: AdminSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const isCollapsed = collapsed && !mobileOpen;
 
   const handleLogout = () => {
     logout();
@@ -42,28 +46,49 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
   };
 
   return (
-    <aside
-      className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64'
+    <>
+      {mobileOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={onMobileClose}
+          aria-label="Close sidebar"
+        />
       )}
-    >
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300',
+          collapsed ? 'md:w-16' : 'md:w-64',
+          'w-64',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        )}
+      >
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-border">
-          {!collapsed && (
+          {!isCollapsed && (
             <Link to="/admin" className="font-serif text-lg font-semibold">
               Admin Panel
             </Link>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className={cn(collapsed && 'mx-auto')}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onMobileClose}
+              className="md:hidden"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggle}
+              className={cn(isCollapsed && 'mx-auto', 'hidden md:inline-flex')}
+            >
+              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -76,16 +101,17 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={onMobileClose}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-md transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                  collapsed && 'justify-center'
+                  isCollapsed && 'justify-center'
                 )}
               >
                 <item.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                {!isCollapsed && <span>{item.label}</span>}
               </Link>
             );
           })}
@@ -96,26 +122,28 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
           <Separator className="mb-2" />
           <Link
             to="/"
+            onClick={onMobileClose}
             className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors mb-1',
-              collapsed && 'justify-center'
+              isCollapsed && 'justify-center'
             )}
           >
             <ChevronLeft className="h-5 w-5" />
-            {!collapsed && <span>View Site</span>}
+            {!isCollapsed && <span>View Site</span>}
           </Link>
           <button
             onClick={handleLogout}
             className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors w-full',
-              collapsed && 'justify-center'
+              isCollapsed && 'justify-center'
             )}
           >
             <LogOut className="h-5 w-5" />
-            {!collapsed && <span>Logout</span>}
+            {!isCollapsed && <span>Logout</span>}
           </button>
         </div>
       </div>
     </aside>
+    </>
   );
 }

@@ -9,6 +9,15 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
+  const normalizeUrl = (url?: string) => {
+    if (!url) return "";
+    if (/^(https?:)?\/\//i.test(url)) return url;
+    if (/^(mailto|tel):/i.test(url)) return url;
+    return `https://${url}`;
+  };
+  const liveUrl = normalizeUrl(project.links.live);
+  const githubUrl = normalizeUrl(project.links.github);
+
   return (
     <Card className="overflow-hidden hover-lift group h-full flex flex-col">
       <div className="relative aspect-video overflow-hidden">
@@ -46,10 +55,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
       </CardContent>
 
       <CardFooter className="gap-2">
-        {project.links.live && (
+        {liveUrl && (
           <Button variant="outline" size="sm" asChild>
             <a
-              href={project.links.live}
+              href={liveUrl}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -58,10 +67,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </a>
           </Button>
         )}
-        {project.links.github && (
+        {githubUrl && (
           <Button variant="ghost" size="sm" asChild>
             <a
-              href={project.links.github}
+              href={githubUrl}
               target="_blank"
               rel="noopener noreferrer"
             >

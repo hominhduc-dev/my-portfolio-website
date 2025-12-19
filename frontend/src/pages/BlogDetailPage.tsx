@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -7,11 +7,89 @@ import { BlogCard } from "@/components/BlogCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { loadPosts, type Post } from "@/data/posts";
+import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import "highlight.js/styles/github-dark.css";
 import DOMPurify from "dompurify";
+import { ARTICLE_PROSE_CLASSES, getHtmlFromJson, parseJsonDoc } from "@/lib/editor";
+import { highlightCodeBlocks } from "@/lib/highlight";
+
+type TocItem = {
+  id: string;
+  text: string;
+  level: 2 | 3;
+};
+
+const slugify = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/d/g, "d")
+    .replace(/D/g, "d")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const extractHeadingsFromMarkdown = (markdown: string): TocItem[] => {
+  const lines = markdown.split("\n");
+  const items: TocItem[] = [];
+  const counts = new Map<string, number>();
+  lines.forEach((line) => {
+    const match = line.match(/^(#{2,3})\s+(.*)/);
+    if (!match) return;
+    const level = match[1].length === 2 ? 2 : 3;
+    const text = match[2].trim();
+    if (!text) return;
+    const base = slugify(text);
+    const count = (counts.get(base) || 0) + 1;
+    counts.set(base, count);
+    const id = count > 1 ? `${base}-${count}` : base;
+    items.push({ id, text, level });
+  });
+  return items;
+};
+
+const extractHeadingsFromDoc = (doc: any): TocItem[] => {
+  const items: TocItem[] = [];
+  const counts = new Map<string, number>();
+  const walk = (node: any) => {
+    if (!node) return;
+    if (node.type === "heading" && (node.attrs?.level === 2 || node.attrs?.level === 3)) {
+      const text = (node.content || [])
+        .map((c: any) => (c.type === "text" ? c.text : ""))
+        .join("")
+        .trim();
+      if (text) {
+        const base = slugify(text);
+        const count = (counts.get(base) || 0) + 1;
+        counts.set(base, count);
+        const id = count > 1 ? `${base}-${count}` : base;
+        items.push({ id, text, level: node.attrs.level });
+      }
+    }
+    if (Array.isArray(node.content)) {
+      node.content.forEach(walk);
+    }
+  };
+  walk(doc);
+  return items;
+};
+
+const addIdsToHtml = (html: string, toc: TocItem[]) => {
+  if (typeof window === "undefined") return html;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const headings = Array.from(doc.querySelectorAll("h2, h3"));
+  headings.forEach((heading, index) => {
+    const item = toc[index];
+    if (item) heading.id = item.id;
+  });
+  return doc.body.innerHTML;
+};
 
 export default function BlogDetailPage() {
   const { slug } = useParams();
@@ -19,6 +97,10 @@ export default function BlogDetailPage() {
   const [relatedPosts, setRelatedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [heroError, setHeroError] = useState(false);
+  const [tocOffset, setTocOffset] = useState(0);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
   const relatedSkeletons = Array.from({ length: 3 }, (_, i) => (
     <div key={`related-skeleton-${i}`} className="h-48 rounded-xl border bg-muted animate-pulse" />
   ));
@@ -57,6 +139,24 @@ export default function BlogDetailPage() {
     };
   }, [slug]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [slug]);
+
+  useEffect(() => {
+    const updateOffset = () => {
+      if (!contentRef.current || !titleRef.current) return;
+      const contentTop = contentRef.current.getBoundingClientRect().top;
+      const titleTop = titleRef.current.getBoundingClientRect().top;
+      const nextOffset = Math.max(0, Math.round(titleTop - contentTop));
+      setTocOffset(nextOffset);
+    };
+    updateOffset();
+    window.addEventListener("resize", updateOffset);
+    return () => window.removeEventListener("resize", updateOffset);
+  }, [heroError, loading, post?.title]);
+
+
   if (!loading && (!post || error)) {
     return (
       <div className="min-h-screen bg-background">
@@ -74,18 +174,65 @@ export default function BlogDetailPage() {
   const formattedDate = post ? new Date(post.date).toLocaleDateString("en-US", {
     year: "numeric", month: "long", day: "numeric",
   }) : "";
-  const isHtmlContent = !!post && /<\/?[a-z][\s\S]*>/i.test(post.content);
-  const sanitizedHtml = isHtmlContent ? DOMPurify.sanitize(post.content) : "";
+  const heroSrc = post ? post.coverImage || (post as any).coverImageUrl || "" : "";
+  const contentDoc = post ? parseJsonDoc(post.content) : null;
+  const jsonHtml = contentDoc ? getHtmlFromJson(contentDoc) : "";
+  const isHtmlContent = !!post && (jsonHtml ? true : /<\/?[a-z][\s\S]*>/i.test(post.content));
+  const tocItems = useMemo(() => {
+    if (!post) return [];
+    if (contentDoc) return extractHeadingsFromDoc(contentDoc);
+    if (isHtmlContent) return extractHeadingsFromMarkdown(post.content);
+    return extractHeadingsFromMarkdown(post.content);
+  }, [contentDoc, isHtmlContent, post]);
+  const sanitizedHtml = useMemo(() => {
+    if (!isHtmlContent) return "";
+    const html = jsonHtml || post?.content || "";
+    const cleaned = DOMPurify.sanitize(html, {
+      ADD_TAGS: ["iframe"],
+      ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "scrolling", "src", "title", "width", "height"],
+    });
+    return addIdsToHtml(cleaned, tocItems);
+  }, [isHtmlContent, jsonHtml, post?.content, tocItems]);
+
+  useEffect(() => {
+    if (!loading && post) {
+      highlightCodeBlocks(contentRef.current);
+    }
+  }, [loading, post?.content, sanitizedHtml]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <article className="pt-24 pb-24">
-        <div className="container mx-auto px-4 flex justify-center">
-          <div className="w-full max-w-[720px]">
+        <div className="container mx-auto px-4 lg:grid lg:grid-cols-[260px_minmax(0,720px)_260px] lg:gap-10">
+          <div
+            className="w-full max-w-3xl mx-auto lg:max-w-none lg:mx-0 lg:col-start-2 lg:col-end-3"
+            ref={contentRef}
+          >
             <Button variant="ghost" asChild className="mb-10">
               <Link to="/blog"><ArrowLeft className="mr-2 h-4 w-4" /> Back to blog</Link>
             </Button>
+
+            <div className="lg:hidden mb-8">
+              <details className="rounded-2xl border border-border/60 bg-white/80 dark:bg-card/80 p-4 shadow-sm">
+                <summary className="cursor-pointer font-semibold">Table Of Contents</summary>
+                <div className="mt-3 space-y-2 text-sm">
+                  {tocItems.length === 0 && <p className="text-muted-foreground">No sections</p>}
+                  {tocItems.map((item) => (
+                    <a
+                      key={item.id}
+                      href={`#${item.id}`}
+                      className={cn(
+                        "block text-muted-foreground hover:text-foreground",
+                        item.level === 3 ? "ml-3" : ""
+                      )}
+                    >
+                      {item.text}
+                    </a>
+                  ))}
+                </div>
+              </details>
+            </div>
 
             {loading ? (
               <div className="space-y-6 animate-pulse">
@@ -100,69 +247,96 @@ export default function BlogDetailPage() {
               </div>
             ) : post && (
               <>
-                <div className="flex justify-center mb-12">
-                  <img
-                    src={post.coverImage}
-                    alt={post.title}
-                    className="w-full max-w-4xl aspect-[2/1] object-cover rounded-2xl shadow-lg"
-                  />
-                </div>
-
-                <div className="flex items-center gap-4 mb-6 text-sm text-muted-foreground">
-                  <Badge className="capitalize">{post.category}</Badge>
-                  <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{formattedDate}</span>
-                  <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{post.readTime}</span>
-                </div>
-
-                <h1 className="font-serif text-4xl md:text-5xl font-medium mb-8 leading-tight">
-                  {post.title}
-                </h1>
-
-                <div className="prose prose-lg max-w-none text-[#111] dark:text-foreground leading-[1.7] prose-p:mb-7 prose-headings:mt-12 prose-headings:mb-5 prose-h2:mt-14 prose-h3:mt-10 prose-blockquote:border-l-4 prose-blockquote:border-muted-foreground/30 prose-blockquote:bg-muted/40 prose-blockquote:px-4 prose-blockquote:py-3 prose-blockquote:rounded-md prose-li:mb-2 prose-pre:rounded-xl prose-pre:bg-[#0f1115] prose-pre:text-sm prose-pre:leading-[1.6] prose-pre:p-5 prose-code:text-sm">
-                  {isHtmlContent ? (
-                    <div
-                      className="prose prose-lg max-w-none"
-                      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-                    />
-                  ) : (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeHighlight]}
-                      components={{
-                        h1: (props) => <h1 className="font-serif text-3xl mt-8 mb-4" {...props} />,
-                        h2: (props) => <h2 className="font-serif text-2xl mt-8 mb-4" {...props} />,
-                        h3: (props) => <h3 className="font-serif text-xl mt-6 mb-3" {...props} />,
-                        p: (props) => <p className="text-muted-foreground mb-6 leading-relaxed" {...props} />,
-                        code: ({
-                          inline,
-                          className,
-                          children,
-                          ...props
-                        }: {
-                          inline?: boolean;
-                          className?: string;
-                          children?: ReactNode;
-                        }) => {
-                          if (inline) {
-                            return <code className="bg-muted px-1.5 py-0.5 rounded text-sm" {...props}>{children}</code>;
-                          }
-                          return (
-                            <pre className="rounded-lg border bg-muted p-4 overflow-auto">
-                              <code className={className || ""} {...props}>
-                                {children}
-                              </code>
-                            </pre>
-                          );
-                        },
+                {heroSrc && !heroError && (
+                  <div className="flex justify-center mb-10">
+                    <img
+                      src={heroSrc}
+                      alt={post.title}
+                      className="w-full max-w-[800px] aspect-[2/1] object-cover rounded-2xl shadow-lg border border-border/40 bg-white/60 dark:bg-muted"
+                      onError={() => setHeroError(true)}
+                      onLoad={() => {
+                        if (contentRef.current && titleRef.current) {
+                          const contentTop = contentRef.current.getBoundingClientRect().top;
+                          const titleTop = titleRef.current.getBoundingClientRect().top;
+                          setTocOffset(Math.max(0, Math.round(titleTop - contentTop)));
+                        }
                       }}
-                    >
-                      {post.content}
-                    </ReactMarkdown>
-                  )}
-                </div>
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                {(!heroSrc || heroError) && (
+                  <div className="flex justify-center mb-10">
+                    <div className="w-full max-w-[840px] aspect-[2/1] rounded-2xl border border-dashed border-border/50 bg-muted flex items-center justify-center text-muted-foreground text-sm">
+                      No cover image
+                    </div>
+                  </div>
+                )}
+
+                <article className="mx-auto w-full max-w-3xl px-4 lg:px-0">
+                  <div className={ARTICLE_PROSE_CLASSES}>
+                    <div className="not-prose flex flex-wrap items-center gap-4 mb-5 text-sm text-muted-foreground">
+                      <Badge className="capitalize bg-black text-white dark:bg-white dark:text-black">{post.category}</Badge>
+                      <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{formattedDate}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{post.readTime}</span>
+                    </div>
+
+                    <h1 ref={titleRef}>{post.title}</h1>
+                    {post.excerpt && (
+                      <p className="lead text-muted-foreground">{post.excerpt}</p>
+                    )}
+
+                    {isHtmlContent ? (
+                      <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeHighlight]}
+                        components={{
+                          h2: (props) => {
+                            const text = String(props.children ?? "");
+                            const id = slugify(text);
+                            return <h2 id={id} {...props} />;
+                          },
+                          h3: (props) => {
+                            const text = String(props.children ?? "");
+                            const id = slugify(text);
+                            return <h3 id={id} {...props} />;
+                          },
+                        }}
+                      >
+                        {post.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
+                </article>
               </>
             )}
           </div>
+          <aside className="hidden lg:block lg:col-start-3 lg:col-end-4">
+            <div className="sticky top-28 space-y-4" style={{ marginTop: tocOffset }}>
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary dark:text-primary/80">
+                Table Of Contents
+              </p>
+              <nav className="space-y-2 text-sm rounded-2xl border border-border/70 bg-white/90 dark:bg-[#13161d] p-4 shadow-lg ring-1 ring-primary/10 dark:ring-primary/20">
+                {tocItems.length === 0 && (
+                  <p className="text-muted-foreground">No sections</p>
+                )}
+                {tocItems.map((item) => (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    className={cn(
+                      "block rounded-md px-2 py-1 text-foreground/80 font-medium hover:text-foreground hover:bg-primary/10 dark:hover:bg-white/5 transition",
+                      item.level === 3 ? "ml-3" : ""
+                    )}
+                  >
+                    {item.text}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </aside>
         </div>
 
         <div className="container mx-auto px-4 mt-16">

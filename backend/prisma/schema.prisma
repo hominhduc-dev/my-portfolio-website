@@ -50,13 +50,14 @@ model SiteSetting {
   socialTwitter  String?
   seoMetaTitle   String
   seoMetaDesc    String
-  avatarUrl      String
   resumeUrl      String?
   updatedAt      DateTime @updatedAt
 }
 
 model About {
   id        Int             @id @default(1)
+  avatarUrl String?
+  location  String?
   shortBio  String
   longStory String
   timelines TimelineEntry[]

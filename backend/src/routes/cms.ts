@@ -5,62 +5,58 @@ import { sendError, sendOk } from "../utils/response";
 
 const router = express.Router();
 
-// Default seeds for singletons
 const defaultSiteSettings = {
   siteTitle: "minhduc.dev",
-  tagline: "Full-Stack Developer & Designer",
+  tagline: "Back-end Developer & Automation",
   heroIntro: "I build beautiful, scalable web applications with modern technologies.",
-  socialGithub: "https://github.com/minhduc",
-  socialLinkedin: "https://linkedin.com/in/minhduc",
-  socialEmail: "hello@minhduc.dev",
-  socialTwitter: "https://twitter.com/minhduc",
-  seoMetaTitle: "Minh Duc - Full-Stack Developer",
+  socialGithub: "https://github.com/ducdeptrai052",
+  socialLinkedin: "https://www.linkedin.com/in/duc-ho-073aa8153/",
+  socialEmail: "hominhduc.dev@gmail.com",
+  socialTwitter: "#",
+  seoMetaTitle: "Minh Duc - Back-end Developer",
   seoMetaDesc:
-    "Personal portfolio of Minh Duc, a full-stack developer specializing in React, TypeScript, and Node.js.",
-  avatarUrl:
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face",
+    "Personal portfolio of Minh Duc, a Back-end Developer specializing in React, TypeScript, and Node.js.",
   resumeUrl: null as string | null,
 };
 
 const defaultAbout = {
-  shortBio: "Full-Stack Developer with 10+ years of experience building web applications.",
-  longStory: `I'm a passionate developer who loves creating elegant solutions to complex problems. My journey in tech started when I built my first website at 15, and I've been hooked ever since.
-
-Over the years, I've worked with startups and enterprises, leading teams and shipping products used by millions. I believe in clean code, thoughtful design, and continuous learning.
-
-When I'm not coding, you can find me reading, hiking, or experimenting with new technologies.`,
+  avatarUrl:
+    "",
+  location: "",
+  shortBio: "",
+  longStory: ``,
   education: [
     {
-      title: "M.S. Computer Science",
-      organization: "Stanford University",
-      period: "2012 - 2014",
-      description: "Focused on distributed systems and machine learning.",
+      title: "",
+      organization: "",
+      period: "",
+      description: "",
     },
     {
-      title: "B.S. Computer Science",
-      organization: "UC Berkeley",
-      period: "2008 - 2012",
-      description: "Graduated with honors. Minor in Mathematics.",
+      title: "",
+      organization: "",
+      period: "",
+      description: "",
     },
   ],
   experience: [
     {
-      title: "Senior Software Engineer",
-      organization: "Tech Company",
-      period: "2020 - Present",
-      description: "Leading frontend architecture and mentoring junior developers.",
+      title: "",
+      organization: "",
+      period: "",
+      description: "",
     },
     {
-      title: "Software Engineer",
-      organization: "Startup Inc.",
-      period: "2016 - 2020",
-      description: "Built core features and scaled the platform to 1M+ users.",
+      title: "",
+      organization: "",
+      period: "",
+      description: "",
     },
     {
-      title: "Junior Developer",
-      organization: "Agency Co.",
-      period: "2014 - 2016",
-      description: "Developed client websites and internal tools.",
+      title: "",
+      organization: "",
+      period: "",
+      description: "",
     },
   ],
 };
@@ -88,7 +84,6 @@ router.put("/settings", async (req, res) => {
     socialTwitter: data.socialTwitter ?? null,
     seoMetaTitle: data.seoMetaTitle,
     seoMetaDesc: data.seoMetaDesc,
-    avatarUrl: data.avatarUrl ?? null,
     resumeUrl: data.resumeUrl ?? null,
   };
   try {
@@ -103,6 +98,20 @@ router.put("/settings", async (req, res) => {
   }
 });
 
+router.put("/settings/resume", async (req, res) => {
+  const resumeUrl = req.body?.resumeUrl ?? null;
+  try {
+    const updated = await prisma.siteSetting.upsert({
+      where: { id: 1 },
+      update: { resumeUrl },
+      create: { ...defaultSiteSettings, resumeUrl },
+    });
+    return sendOk(res, updated, "Resume updated");
+  } catch (error: any) {
+    return sendError(res, error?.message || "Failed to update resume", 400);
+  }
+});
+
 // About + timelines
 router.get("/about", async (_req, res) => {
   let about = await prisma.about.findUnique({
@@ -112,6 +121,8 @@ router.get("/about", async (_req, res) => {
   if (!about) {
     about = await prisma.about.create({
       data: {
+        avatarUrl: defaultAbout.avatarUrl,
+        location: defaultAbout.location,
         shortBio: defaultAbout.shortBio,
         longStory: defaultAbout.longStory,
         timelines: {
@@ -131,6 +142,8 @@ router.get("/about", async (_req, res) => {
     });
   }
   const payload = {
+    avatarUrl: about.avatarUrl ?? null,
+    location: about.location ?? null,
     shortBio: about.shortBio,
     longStory: about.longStory,
     education: about.timelines.filter((t) => t.type === "education"),
@@ -140,13 +153,20 @@ router.get("/about", async (_req, res) => {
 });
 
 router.put("/about", async (req, res) => {
-  const { shortBio, longStory, education = [], experience = [] } = req.body || {};
+  const {
+    shortBio,
+    longStory,
+    education = [],
+    experience = [],
+    avatarUrl = null,
+    location = null,
+  } = req.body || {};
   try {
     const result = await prisma.$transaction(async (tx) => {
       const about = await tx.about.upsert({
         where: { id: 1 },
-        update: { shortBio, longStory },
-        create: { shortBio, longStory },
+        update: { shortBio, longStory, avatarUrl, location },
+        create: { shortBio, longStory, avatarUrl, location },
       });
       await tx.timelineEntry.deleteMany({ where: { aboutId: about.id } });
       await tx.timelineEntry.createMany({
@@ -176,6 +196,8 @@ router.put("/about", async (req, res) => {
       include: { timelines: true },
     });
     const payload = {
+      avatarUrl: about?.avatarUrl ?? null,
+      location: about?.location ?? null,
       shortBio: about?.shortBio ?? "",
       longStory: about?.longStory ?? "",
       education: about?.timelines.filter((t) => t.type === "education") ?? [],

@@ -29,11 +29,12 @@ export default function ContactPage() {
           
           <form onSubmit={handleSubmit} className="space-y-6 mt-8">
             <div className="grid md:grid-cols-2 gap-4">
-              <div><label className="text-sm font-medium mb-2 block">Name *</label><Input required placeholder="Your name" /></div>
-              <div><label className="text-sm font-medium mb-2 block">Email *</label><Input type="email" required placeholder="you@example.com" /></div>
+              <div><label className="text-sm font-medium mb-2 block">Name *</label><Input required placeholder="Your Full Name" /></div>
+              <div><label className="text-sm font-medium mb-2 block">Email *</label><Input type="email" required placeholder="youremail@gmail.com
+" /></div>
             </div>
             <div className="grid md:grid-cols-2 gap-4">
-              <div><label className="text-sm font-medium mb-2 block">Phone</label><Input placeholder="+1 (555) 000-0000" /></div>
+              <div><label className="text-sm font-medium mb-2 block">Phone</label><Input placeholder="+84 123456789" /></div>
               <div><label className="text-sm font-medium mb-2 block">Company</label><Input placeholder="Your company" /></div>
             </div>
             <div>

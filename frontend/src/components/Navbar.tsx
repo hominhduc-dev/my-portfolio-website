@@ -30,6 +30,12 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") {
+      setIsDark(stored === "dark");
+      document.documentElement.classList.toggle("dark", stored === "dark");
+      return;
+    }
     const isDarkMode = document.documentElement.classList.contains("dark");
     setIsDark(isDarkMode);
   }, []);
@@ -44,6 +50,7 @@ export function Navbar() {
     const newIsDark = !isDark;
     setIsDark(newIsDark);
     document.documentElement.classList.toggle("dark", newIsDark);
+    localStorage.setItem("theme", newIsDark ? "dark" : "light");
   };
 
   const isActive = (href: string) => {

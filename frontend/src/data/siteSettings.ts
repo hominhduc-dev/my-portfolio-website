@@ -12,7 +12,6 @@ export interface SiteSettings {
     metaTitle: string;
     metaDescription: string;
   };
-  avatarUrl: string;
   resumeUrl?: string;
 }
 
@@ -26,13 +25,12 @@ type BackendSiteSettings = {
   socialTwitter?: string | null;
   seoMetaTitle: string;
   seoMetaDesc: string;
-  avatarUrl: string | null;
   resumeUrl?: string | null;
 };
 
 export const defaultSiteSettings: SiteSettings = {
   siteTitle: 'minhduc.dev',
-  tagline: 'Full-Stack Developer & Designer',
+  tagline: '',
   heroIntro: 'I build beautiful, scalable web applications with modern technologies.',
   socialLinks: {
     github: 'https://github.com/minhduc',
@@ -41,10 +39,9 @@ export const defaultSiteSettings: SiteSettings = {
     twitter: 'https://twitter.com/minhduc',
   },
   seo: {
-    metaTitle: 'Minh Duc - Full-Stack Developer',
-    metaDescription: 'Personal portfolio of Minh Duc, a full-stack developer specializing in React, TypeScript, and Node.js.',
+    metaTitle: 'Minh Duc - Back-end Developer',
+    metaDescription: 'Personal portfolio of Minh Duc, a Back-end Developer specializing in React, TypeScript, and Node.js.',
   },
-  avatarUrl: '',
   resumeUrl: '',
 };
 
@@ -66,7 +63,6 @@ const toFrontend = (data?: BackendSiteSettings | null): SiteSettings => {
       metaTitle: data.seoMetaTitle,
       metaDescription: data.seoMetaDesc,
     },
-    avatarUrl: data.avatarUrl || defaultSiteSettings.avatarUrl,
     resumeUrl: data.resumeUrl || "",
   };
 };
@@ -81,7 +77,6 @@ const toBackend = (settings: SiteSettings): BackendSiteSettings => ({
   socialTwitter: settings.socialLinks.twitter || null,
   seoMetaTitle: settings.seo.metaTitle,
   seoMetaDesc: settings.seo.metaDescription,
-  avatarUrl: settings.avatarUrl,
   resumeUrl: settings.resumeUrl || null,
 });
 
@@ -101,6 +96,14 @@ export async function updateSiteSettings(settings: SiteSettings): Promise<SiteSe
     body: JSON.stringify(toBackend(settings)),
   });
   return toFrontend(res.data) ?? settings;
+}
+
+export async function updateResumeUrl(resumeUrl: string | null): Promise<SiteSettings> {
+  const res = await apiFetch<BackendSiteSettings>("/api/settings/resume", {
+    method: "PUT",
+    body: JSON.stringify({ resumeUrl }),
+  });
+  return toFrontend(res.data) ?? defaultSiteSettings;
 }
 
 export async function uploadAvatar(file: File, oldUrl?: string): Promise<string> {
