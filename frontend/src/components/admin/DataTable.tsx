@@ -31,6 +31,8 @@ interface DataTableProps<T> {
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
   searchPlaceholder?: string;
+  editLabel?: string;
+  deleteLabel?: string;
 }
 
 export function DataTable<T extends { id: string }>({
@@ -40,6 +42,8 @@ export function DataTable<T extends { id: string }>({
   onEdit,
   onDelete,
   searchPlaceholder = 'Search...',
+  editLabel = 'Edit',
+  deleteLabel = 'Delete',
 }: DataTableProps<T>) {
   const [search, setSearch] = React.useState('');
 
@@ -101,13 +105,13 @@ export function DataTable<T extends { id: string }>({
                           {onEdit && (
                             <DropdownMenuItem onClick={() => onEdit(item)}>
                               <Edit className="h-4 w-4 mr-2" />
-                              Edit
+                              {editLabel}
                             </DropdownMenuItem>
                           )}
                           {onDelete && (
                             <DropdownMenuItem onClick={() => onDelete(item)} className="text-destructive">
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
+                              {deleteLabel}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>

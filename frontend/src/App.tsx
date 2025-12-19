@@ -17,6 +17,7 @@ import AdminProjectEditorPage from "@/pages/admin/AdminProjectEditorPage";
 import AdminBlogPage from "@/pages/admin/AdminBlogPage";
 import AdminBlogEditorPage from "@/pages/admin/AdminBlogEditorPage";
 import AdminReposPage from "@/pages/admin/AdminReposPage";
+import AdminMessagesPage from "@/pages/admin/AdminMessagesPage";
 import { AuthGuard } from "@/components/admin/AuthGuard";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Analytics } from "@vercel/analytics/react";
@@ -64,6 +65,7 @@ function App() {
           <Route path="blog" element={<AdminBlogPage />} />
           <Route path="blog/new" element={<AdminBlogEditorPage />} />
           <Route path="blog/:id/edit" element={<AdminBlogEditorPage />} />
+          <Route path="messages" element={<AdminMessagesPage />} />
         </Route>
         <Route path="*" element={<div>404 - Page not found</div>} />
       </Routes>

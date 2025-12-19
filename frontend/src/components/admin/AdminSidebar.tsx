@@ -10,6 +10,7 @@ import {
   FolderKanban,
   FileText,
   GitBranch,
+  Mail,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -33,6 +34,7 @@ const navItems = [
   { path: '/admin/projects', label: 'Projects', icon: FolderKanban },
   { path: '/admin/repos', label: 'Open Source', icon: GitBranch },
   { path: '/admin/blog', label: 'Blog', icon: FileText },
+  { path: '/admin/messages', label: 'Messages', icon: Mail },
 ];
 
 export function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: AdminSidebarProps) {

@@ -49,16 +49,16 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-serif font-medium">Dashboard</h1>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link to="/admin/projects/new">
               <Plus className="h-4 w-4 mr-2" />
               New Project
             </Link>
           </Button>
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link to="/admin/blog/new">
               <Plus className="h-4 w-4 mr-2" />
               New Post
