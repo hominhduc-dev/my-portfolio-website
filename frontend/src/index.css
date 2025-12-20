@@ -338,6 +338,18 @@
 }
 
 @layer components {
+  .article-prose iframe {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    display: block;
+    margin: 1.5rem auto;
+    border-radius: 0.75rem;
+  }
+}
+
+@layer components {
   .article-prose a {
     @apply no-underline;
   }
