@@ -96,7 +96,7 @@ export default function ResumePage() {
                   <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                   <h3 className="font-serif text-xl font-medium mb-2">Resume Preview</h3>
                   <p className="text-muted-foreground">
-                    Hiện chưa có resume. Hãy upload trong Admin Settings.
+                    Empty.
                   </p>
                 </div>
               </div>
