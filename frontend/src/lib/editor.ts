@@ -166,7 +166,7 @@ export const ARTICLE_PROSE_CLASSES = [
   "prose-img:my-8",
   "prose-img:rounded-xl",
   "prose-img:shadow-lg",
-  "prose-img:max-w-full",
+  "prose-img:w-full",
   "prose-img:max-w-[760px]",
   "prose-iframe:mx-auto",
   "prose-iframe:my-8",

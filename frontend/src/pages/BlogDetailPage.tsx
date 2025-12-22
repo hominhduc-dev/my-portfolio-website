@@ -1,11 +1,12 @@
 import { useParams, Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { BlogCard } from "@/components/BlogCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { loadPosts, type Post } from "@/data/posts";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -112,6 +113,7 @@ export default function BlogDetailPage() {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const tocRef = useRef<HTMLDivElement | null>(null);
+  const { toast } = useToast();
   const relatedSkeletons = Array.from({ length: 3 }, (_, i) => (
     <div key={`related-skeleton-${i}`} className="h-48 rounded-xl border bg-muted animate-pulse" />
   ));
@@ -230,6 +232,25 @@ export default function BlogDetailPage() {
     }
   }, [loading, post, sanitizedHtml]);
 
+  const handleShare = async () => {
+    if (!post) return;
+    const shareUrl = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post.title,
+          text: post.excerpt,
+          url: shareUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ title: "Link copied", description: "Share link copied to clipboard." });
+    } catch {
+      toast({ title: "Share failed", description: "Could not share this post.", variant: "destructive" });
+    }
+  };
+
   if (!loading && (!post || error)) {
     return (
       <div className="min-h-screen bg-background">
@@ -245,7 +266,7 @@ export default function BlogDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <Navbar />
       <article className="pt-24 pb-24">
         <div className="container mx-auto px-4 lg:grid lg:grid-cols-[260px_minmax(0,720px)_260px] lg:gap-10">
@@ -329,6 +350,16 @@ export default function BlogDetailPage() {
                       <Badge className="capitalize bg-black text-white dark:bg-white dark:text-black">{post.category}</Badge>
                       <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{formattedDate}</span>
                       <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{post.readTime}</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto text-xs"
+                        onClick={handleShare}
+                      >
+                        <Share2 className="mr-2 h-3.5 w-3.5" />
+                        Share
+                      </Button>
                     </div>
 
                     <h1 ref={titleRef}>{post.title}</h1>
