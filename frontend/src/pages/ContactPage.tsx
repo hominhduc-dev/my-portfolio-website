@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { submitContact } from "@/data/contact";
+import { setPageMeta } from "@/lib/seo";
 
 export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,6 +21,13 @@ export default function ContactPage() {
     subject: "",
     message: "",
   });
+
+  useEffect(() => {
+    setPageMeta({
+      title: "Contact | Minh Duc",
+      description: "Get in touch for projects, consulting, or collaboration.",
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

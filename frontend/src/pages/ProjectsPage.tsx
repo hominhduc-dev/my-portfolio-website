@@ -10,6 +10,7 @@ import { PaginationBar } from "@/components/PaginationBar";
 import { EmptyState } from "@/components/EmptyState";
 import { fetchProjectsPublic, getAllTags, type Project } from "@/data/projects";
 import { fetchReposPublic, type Repo } from "@/data/repos";
+import { setPageMeta } from "@/lib/seo";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -42,6 +43,13 @@ export default function ProjectsPage() {
       })
       .catch((err: any) => setReposError(err?.message || "Failed to load repositories"))
       .finally(() => setReposLoading(false));
+  }, []);
+
+  useEffect(() => {
+    setPageMeta({
+      title: "Projects | Minh Duc",
+      description: "A collection of projects and open source contributions.",
+    });
   }, []);
 
   const allTags = useMemo(() => getAllTags(projects), [projects]);

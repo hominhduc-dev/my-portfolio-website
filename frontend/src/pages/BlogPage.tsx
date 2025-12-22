@@ -8,6 +8,7 @@ import { PaginationBar } from "@/components/PaginationBar";
 import { EmptyState } from "@/components/EmptyState";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadPosts, type Post } from "@/data/posts";
+import { setPageMeta } from "@/lib/seo";
 
 const ITEMS_PER_PAGE = 9;
 
@@ -27,6 +28,13 @@ export default function BlogPage() {
       })
       .catch((err: any) => setError(err?.message || "Failed to load posts"))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    setPageMeta({
+      title: "Blog | Minh Duc",
+      description: "Latest posts on development, design, and personal growth.",
+    });
   }, []);
 
   const filteredPosts = useMemo(() => {

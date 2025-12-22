@@ -133,9 +133,40 @@ const fetchPosts = async () => {
   }
 };
 
+const fetchPublic = async (path) => {
+  try {
+    const res = await fetch(`${apiBase}${path}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+const fetchSettings = () => fetchPublic("/public/settings");
+const fetchAbout = () => fetchPublic("/public/about");
+const fetchProjects = () => fetchPublic("/public/projects");
+
+const writePage = async (route, meta, body, indexHtml) => {
+  const html = injectRoot(injectHead(indexHtml, meta), body);
+  const normalized = route.replace(/^\/+/, "");
+  const outDir = normalized ? path.join(distDir, normalized) : distDir;
+  await ensureDir(outDir);
+  await fs.writeFile(path.join(outDir, "index.html"), html, "utf-8");
+};
+
 const run = async () => {
   const indexHtml = await fs.readFile(indexPath, "utf-8");
   const posts = await fetchPosts();
+  const settings = (await fetchSettings()) || {};
+  const about = (await fetchAbout()) || {};
+  const projectsData = await fetchProjects();
+  const projects = Array.isArray(projectsData) ? projectsData : [];
+
+  const siteTitle = settings.siteTitle || "Minh Duc";
+  const siteTagline = settings.tagline || "Backend Developer & Automation";
+  const heroIntro = settings.heroIntro || "";
 
   const blogListHtml = `
     <main class="prerender">
@@ -167,9 +198,146 @@ const run = async () => {
     },
   };
 
-  const blogHtml = injectRoot(injectHead(indexHtml, blogMeta), blogListHtml);
-  await ensureDir(path.join(distDir, "blog"));
-  await fs.writeFile(path.join(distDir, "blog", "index.html"), blogHtml, "utf-8");
+  await writePage("/blog", blogMeta, blogListHtml, indexHtml);
+
+  const homeBody = `
+    <main class="prerender">
+      <article>
+        <h1>${escapeHtml(siteTitle)}</h1>
+        ${siteTagline ? `<p>${escapeHtml(siteTagline)}</p>` : ""}
+        ${heroIntro ? `<p>${escapeHtml(heroIntro)}</p>` : ""}
+      </article>
+    </main>
+  `;
+  await writePage(
+    "/",
+    {
+      title: `${siteTitle} | Developer Portfolio`,
+      description: heroIntro || siteTagline || "Personal portfolio and blog.",
+      url: `${siteUrl}/`,
+      image: "",
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        name: siteTitle,
+        url: `${siteUrl}/`,
+      },
+    },
+    homeBody,
+    indexHtml
+  );
+
+  const projectsList = projects
+    .map(
+      (project) =>
+        `<li><strong>${escapeHtml(project.title || "")}</strong>${project.shortDescription ? ` — ${escapeHtml(project.shortDescription)}` : ""}</li>`
+    )
+    .join("");
+  const projectsBody = `
+    <main class="prerender">
+      <article>
+        <h1>Projects</h1>
+        <p>A collection of things I've built.</p>
+        ${projectsList ? `<ul>${projectsList}</ul>` : "<p>No projects yet.</p>"}
+      </article>
+    </main>
+  `;
+  await writePage(
+    "/projects",
+    {
+      title: `Projects | ${siteTitle}`,
+      description: "A collection of projects and open source contributions.",
+      url: `${siteUrl}/projects`,
+      image: "",
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Projects",
+        url: `${siteUrl}/projects`,
+      },
+    },
+    projectsBody,
+    indexHtml
+  );
+
+  const aboutBody = `
+    <main class="prerender">
+      <article>
+        <h1>About</h1>
+        ${about.shortBio ? `<p>${escapeHtml(about.shortBio)}</p>` : ""}
+        ${about.longStory ? `<p>${escapeHtml(about.longStory)}</p>` : ""}
+      </article>
+    </main>
+  `;
+  await writePage(
+    "/about",
+    {
+      title: `About | ${siteTitle}`,
+      description: about.shortBio || siteTagline || "Learn more about Minh Duc.",
+      url: `${siteUrl}/about`,
+      image: "",
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "ProfilePage",
+        name: "About",
+        url: `${siteUrl}/about`,
+      },
+    },
+    aboutBody,
+    indexHtml
+  );
+
+  const resumeBody = `
+    <main class="prerender">
+      <article>
+        <h1>Resume</h1>
+        <p>Download or preview my latest resume.</p>
+      </article>
+    </main>
+  `;
+  await writePage(
+    "/resume",
+    {
+      title: `Resume | ${siteTitle}`,
+      description: "Download or preview my latest resume.",
+      url: `${siteUrl}/resume`,
+      image: "",
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: "Resume",
+        url: `${siteUrl}/resume`,
+      },
+    },
+    resumeBody,
+    indexHtml
+  );
+
+  const contactBody = `
+    <main class="prerender">
+      <article>
+        <h1>Contact</h1>
+        <p>Get in touch for projects, consulting, or collaboration.</p>
+      </article>
+    </main>
+  `;
+  await writePage(
+    "/contact",
+    {
+      title: `Contact | ${siteTitle}`,
+      description: "Get in touch for projects, consulting, or collaboration.",
+      url: `${siteUrl}/contact`,
+      image: "",
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "ContactPage",
+        name: "Contact",
+        url: `${siteUrl}/contact`,
+      },
+    },
+    contactBody,
+    indexHtml
+  );
 
   for (const post of posts) {
     const title = post.title || "Blog Post";

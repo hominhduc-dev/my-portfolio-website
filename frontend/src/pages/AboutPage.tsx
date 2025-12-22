@@ -8,6 +8,7 @@ import { fetchSkillsData, defaultSkillsData, SkillsData } from "@/data/skills";
 import { fetchAboutData, defaultAboutData, AboutData } from "@/data/about";
 import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
+import { setPageMeta } from "@/lib/seo";
 
 export default function AboutPage() {
   const [settings, setSettings] = useState(defaultSiteSettings);
@@ -31,6 +32,15 @@ export default function AboutPage() {
       .catch(() => setAbout(defaultAboutData))
       .finally(() => setAboutLoaded(true));
   }, []);
+
+  useEffect(() => {
+    const titleBase = settings.siteTitle || "Minh Duc";
+    const description = about.shortBio || settings.tagline || "Learn more about Minh Duc.";
+    setPageMeta({
+      title: `About | ${titleBase}`,
+      description,
+    });
+  }, [about.shortBio, settings.siteTitle, settings.tagline]);
 
   return (
     <div className="min-h-screen bg-background">

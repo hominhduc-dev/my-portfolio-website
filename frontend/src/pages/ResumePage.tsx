@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { fetchSiteSettings } from "@/data/siteSettings";
+import { setPageMeta } from "@/lib/seo";
 
 export default function ResumePage() {
   const [resumeUrl, setResumeUrl] = useState<string>("");
@@ -13,6 +14,13 @@ export default function ResumePage() {
     fetchSiteSettings(true)
       .then((data) => setResumeUrl(data.resumeUrl || ""))
       .catch(() => setResumeUrl(""));
+  }, []);
+
+  useEffect(() => {
+    setPageMeta({
+      title: "Resume | Minh Duc",
+      description: "Download or preview my latest resume.",
+    });
   }, []);
 
   const downloadLink = resumeUrl || "/resume.pdf";
@@ -108,4 +116,3 @@ export default function ResumePage() {
     </div>
   );
 }
-

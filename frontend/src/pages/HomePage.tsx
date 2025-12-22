@@ -13,6 +13,7 @@ import { fetchProjectsPublic, getFeaturedProjects, type Project } from "@/data/p
 import { getTopRepos, type Repo } from "@/data/repos";
 import { useEffect, useState } from "react";
 import { fetchSiteSettings, defaultSiteSettings } from "@/data/siteSettings";
+import { setPageMeta } from "@/lib/seo";
 
 export default function HomePage() {
   const [settings, setSettings] = useState(defaultSiteSettings);
@@ -33,6 +34,15 @@ export default function HomePage() {
       .catch(() => setSettings(defaultSiteSettings))
       .finally(() => setSettingsLoaded(true));
   }, []);
+
+  useEffect(() => {
+    const titleBase = settings.siteTitle || "Minh Duc";
+    const description = settings.heroIntro || settings.tagline || "Personal portfolio and blog.";
+    setPageMeta({
+      title: `${titleBase} | Developer Portfolio`,
+      description,
+    });
+  }, [settings.heroIntro, settings.siteTitle, settings.tagline]);
 
   useEffect(() => {
     fetchProjectsPublic()
