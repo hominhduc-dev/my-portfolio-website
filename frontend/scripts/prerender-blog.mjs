@@ -228,6 +228,7 @@ ${urls
 
   const robots = `User-agent: *
 Allow: /
+Disallow: /admin
 Sitemap: ${siteUrl}/sitemap.xml
 `;
   await fs.writeFile(path.join(distDir, "robots.txt"), robots, "utf-8");
