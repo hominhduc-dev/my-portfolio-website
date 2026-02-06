@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchCurrentUser, isAuthenticated, logout } from '@/lib/auth';
+import { fetchCurrentUser, logout } from '@/lib/auth';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -13,10 +13,6 @@ export function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     const verify = async () => {
       try {
-        if (!isAuthenticated()) {
-          navigate('/admin/login', { replace: true });
-          return;
-        }
         const user = await fetchCurrentUser();
         if (!user) {
           logout();

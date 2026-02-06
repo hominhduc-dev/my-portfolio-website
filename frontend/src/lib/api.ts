@@ -1,4 +1,4 @@
-import { getAuthToken, logout } from "@/lib/auth";
+import { logout } from "@/lib/auth";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -8,24 +8,16 @@ interface ApiResponse<T> {
   data?: T;
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshAccessToken(): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
       credentials: "include",
     });
-    if (!res.ok) return null;
-    const body = await res.json();
-    const token = body?.data?.token;
-    if (token) {
-      // avoid circular import by requiring here
-      const { setStorageItem, STORAGE_KEYS } = await import("@/lib/storage");
-      setStorageItem(STORAGE_KEYS.AUTH, token);
-      return token;
-    }
-    return null;
+    if (!res.ok) return false;
+    return true;
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -34,16 +26,12 @@ export async function apiFetch<T>(
   options: RequestInit = {},
   _retry = false
 ): Promise<ApiResponse<T>> {
-  let token = getAuthToken();
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> | undefined),
   };
   const isFormData = options.body instanceof FormData;
   if (!isFormData && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
-  }
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -60,8 +48,8 @@ export async function apiFetch<T>(
   }
 
   if (res.status === 401 && !_retry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
       return apiFetch(path, options, true);
     }
     logout();

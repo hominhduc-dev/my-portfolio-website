@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
 const indexPath = path.join(distDir, "index.html");
+const ogDir = path.join(distDir, "og");
 
 const normalizeUrl = (value) => (value ? value.replace(/\/+$/, "") : "");
 const siteUrl = normalizeUrl(
@@ -21,6 +22,7 @@ const siteUrl = normalizeUrl(
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:8080")
 );
 const apiBase = normalizeUrl(process.env.VITE_API_URL || process.env.API_URL || "http://localhost:3000");
+const defaultOgImage = `${siteUrl}/og-image.svg`;
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -122,6 +124,47 @@ const ensureDir = async (dir) => {
   await fs.mkdir(dir, { recursive: true });
 };
 
+const toSlug = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "post";
+
+const buildOgSvg = ({
+  title = "Blog",
+  subtitle = "Minh Duc",
+  description = "",
+  accent = "#38bdf8",
+}) => {
+  const safeTitle = escapeHtml(title);
+  const safeSubtitle = escapeHtml(subtitle);
+  const safeDescription = escapeHtml(description);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0b1120"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="70" y="70" width="1060" height="490" rx="32" fill="#0f172a" stroke="#1f2937" stroke-width="2"/>
+  <rect x="70" y="70" width="16" height="490" rx="8" fill="${accent}"/>
+  <text x="130" y="240" fill="#e2e8f0" font-family="Playfair Display, serif" font-size="56" font-weight="600">
+    ${safeTitle}
+  </text>
+  <text x="130" y="320" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="500">
+    ${safeSubtitle}
+  </text>
+  ${
+    safeDescription
+      ? `<text x="130" y="400" fill="#64748b" font-family="Inter, Arial, sans-serif" font-size="22">${safeDescription}</text>`
+      : ""
+  }
+</svg>`;
+};
+
 const fetchPosts = async () => {
   try {
     const res = await fetch(`${apiBase}/public/posts`);
@@ -131,6 +174,13 @@ const fetchPosts = async () => {
   } catch {
     return [];
   }
+};
+
+const resolveImageUrl = (value) => {
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("/")) return `${siteUrl}${value}`;
+  return `${siteUrl}/${value}`;
 };
 
 const fetchPublic = async (path) => {
@@ -158,6 +208,7 @@ const writePage = async (route, meta, body, indexHtml) => {
 
 const run = async () => {
   const indexHtml = await fs.readFile(indexPath, "utf-8");
+  await ensureDir(ogDir);
   const posts = await fetchPosts();
   const settings = (await fetchSettings()) || {};
   const about = (await fetchAbout()) || {};
@@ -189,7 +240,7 @@ const run = async () => {
     title: "Blog | Minh Duc",
     description: "Latest posts from Minh Duc.",
     url: `${siteUrl}/blog`,
-    image: "",
+    image: defaultOgImage,
     jsonLd: {
       "@context": "https://schema.org",
       "@type": "Blog",
@@ -215,7 +266,7 @@ const run = async () => {
       title: `${siteTitle} | Developer Portfolio`,
       description: heroIntro || siteTagline || "Personal portfolio and blog.",
       url: `${siteUrl}/`,
-      image: "",
+      image: defaultOgImage,
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "Person",
@@ -248,7 +299,7 @@ const run = async () => {
       title: `Projects | ${siteTitle}`,
       description: "A collection of projects and open source contributions.",
       url: `${siteUrl}/projects`,
-      image: "",
+      image: defaultOgImage,
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "CollectionPage",
@@ -275,7 +326,7 @@ const run = async () => {
       title: `About | ${siteTitle}`,
       description: about.shortBio || siteTagline || "Learn more about Minh Duc.",
       url: `${siteUrl}/about`,
-      image: "",
+      image: defaultOgImage,
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "ProfilePage",
@@ -301,7 +352,7 @@ const run = async () => {
       title: `Resume | ${siteTitle}`,
       description: "Download or preview my latest resume.",
       url: `${siteUrl}/resume`,
-      image: "",
+      image: defaultOgImage,
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "WebPage",
@@ -327,7 +378,7 @@ const run = async () => {
       title: `Contact | ${siteTitle}`,
       description: "Get in touch for projects, consulting, or collaboration.",
       url: `${siteUrl}/contact`,
-      image: "",
+      image: defaultOgImage,
       jsonLd: {
         "@context": "https://schema.org",
         "@type": "ContactPage",
@@ -343,7 +394,12 @@ const run = async () => {
     const title = post.title || "Blog Post";
     const description = post.excerpt || "Read the latest blog post.";
     const url = `${siteUrl}/blog/${post.slug}`;
-    const image = post.coverImageUrl || post.coverImage || "";
+    const ogName = `blog-${toSlug(post.slug || title)}.svg`;
+    const ogPath = path.join(ogDir, ogName);
+    const ogPublicUrl = `${siteUrl}/og/${ogName}`;
+    const ogSvg = buildOgSvg({ title, subtitle: siteTitle, description });
+    await fs.writeFile(ogPath, ogSvg, "utf-8");
+    const image = resolveImageUrl(post.coverImageUrl || post.coverImage || ogPublicUrl || defaultOgImage);
     const date = post.updatedAt || post.createdAt || new Date().toISOString();
     const contentHtml = renderContent(post.content);
 

@@ -16,11 +16,9 @@ export async function requireAuth(
   next: NextFunction
 ) {
   const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  const token = header.slice(7);
+  const bearerToken = header?.startsWith("Bearer ") ? header.slice(7) : null;
+  const cookieToken = (req as any).cookies?.access_token as string | undefined;
+  const token = bearerToken || cookieToken;
 
   if (!token) {
     return res.status(401).json({ message: "Unauthorized" });

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { login, isAuthenticated } from '@/lib/auth';
+import { fetchCurrentUser, login } from '@/lib/auth';
 import { Lock } from 'lucide-react';
 
 export default function AdminLoginPage() {
@@ -16,9 +16,13 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
-    if (isAuthenticated()) {
-      navigate('/admin', { replace: true });
-    }
+    const checkSession = async () => {
+      const user = await fetchCurrentUser();
+      if (user) {
+        navigate('/admin', { replace: true });
+      }
+    };
+    checkSession();
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {

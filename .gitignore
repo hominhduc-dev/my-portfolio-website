@@ -1,0 +1,36 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Env files
+.env
+.env.*
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Vite
+.vite/
+
+# Prisma
+/frontend/src/generated/prisma/
+/backend/src/generated/prisma/
+
+# Locks (optional)
+*.lockb

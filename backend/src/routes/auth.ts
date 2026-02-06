@@ -12,6 +12,8 @@ const JWT_SECRET: jwt.Secret = process.env.JWT_SECRET || "dev-secret";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
 const REFRESH_EXPIRES_DAYS = Number(process.env.REFRESH_EXPIRES_DAYS || 14);
 const REFRESH_COOKIE_NAME = "refresh_token";
+const ACCESS_COOKIE_NAME = "access_token";
+const IS_PROD = process.env.NODE_ENV === "production";
 
 function createAccessToken(payload: { sub: string; email: string; role?: string }) {
   return jwt.sign(payload, JWT_SECRET, {
@@ -24,15 +26,29 @@ const hashToken = (token: string) => crypto.createHash("sha256").update(token).d
 function setRefreshCookie(res: any, token: string) {
   res.cookie(REFRESH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: true,
+    secure: IS_PROD,
     sameSite: "lax",
     path: "/auth",
     maxAge: REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
   });
 }
 
+function setAccessCookie(res: any, token: string) {
+  res.cookie(ACCESS_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: "lax",
+    path: "/",
+    maxAge: REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
+  });
+}
+
 function clearRefreshCookie(res: any) {
   res.clearCookie(REFRESH_COOKIE_NAME, { path: "/auth" });
+}
+
+function clearAccessCookie(res: any) {
+  res.clearCookie(ACCESS_COOKIE_NAME, { path: "/" });
 }
 
 // Use a loose type here so TS doesn't flag model access on the generated client
@@ -64,6 +80,7 @@ async function issueTokens(res: any, user: any, req: any) {
   });
 
   setRefreshCookie(res, refreshToken);
+  setAccessCookie(res, accessToken);
   return accessToken;
 }
 
@@ -133,6 +150,7 @@ router.post("/logout", async (req, res) => {
     });
   }
   clearRefreshCookie(res);
+  clearAccessCookie(res);
   return sendOk(res, null, "Logged out");
 });
 
