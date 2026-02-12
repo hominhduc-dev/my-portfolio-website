@@ -19,8 +19,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        serif: ["'Playfair Display'", "Georgia", "serif"],
-        sans: ["'Inter'", "system-ui", "sans-serif"],
+        serif: ["Playfair Display", "Georgia", "Times New Roman", "serif"],
+        sans: ["Inter", "system-ui", "-apple-system", '"Segoe UI"', "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -95,6 +95,7 @@ export default {
           css: {
             maxWidth: "none",
             color: "hsl(var(--foreground))",
+            fontFamily: "var(--font-sans)",
             a: {
               color: "hsl(var(--accent))",
               "&:hover": {
@@ -102,16 +103,16 @@ export default {
               },
             },
             h1: {
-              fontFamily: "'Playfair Display', Georgia, serif",
+              fontFamily: "var(--font-serif)",
             },
             h2: {
-              fontFamily: "'Playfair Display', Georgia, serif",
+              fontFamily: "var(--font-serif)",
             },
             h3: {
-              fontFamily: "'Playfair Display', Georgia, serif",
+              fontFamily: "var(--font-serif)",
             },
             h4: {
-              fontFamily: "'Playfair Display', Georgia, serif",
+              fontFamily: "var(--font-serif)",
             },
           },
         },

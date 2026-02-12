@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Local fonts (optional, kept swap for fast render) */
+@font-face {
+  font-family: "Inter";
+  src: local("Inter"),
+       url("/fonts/Inter/Inter-VariableFont_opsz,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: local("Playfair Display"),
+       url("/fonts/Playfair_Display/PlayfairDisplay-VariableFont_wght.ttf") format("truetype");
+  font-weight: 400 900;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 99%;
@@ -35,8 +52,8 @@
     --radius: 0.5rem;
     
     /* Custom tokens */
-    --font-serif: 'Playfair Display', Georgia, serif;
-    --font-sans: 'Inter', system-ui, sans-serif;
+    --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+    --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
     
     --pattern-color: 220 10% 92%;
     --terminal-bg: 220 20% 8%;
