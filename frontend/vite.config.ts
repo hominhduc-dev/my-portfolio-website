@@ -19,35 +19,12 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Tiptap editor — admin only
+          // Tiptap editor — admin only, no external deps
           if (id.includes("@tiptap") || id.includes("prosemirror")) {
             return "vendor-editor";
           }
-          // Syntax highlighting — blog detail + admin editor only
-          if (
-            id.includes("highlight.js") ||
-            id.includes("lowlight") ||
-            id.includes("rehype-highlight")
-          ) {
-            return "vendor-highlight";
-          }
-          // Markdown rendering — let Vite handle chunking naturally
-          // to avoid circular-dependency initialization errors
-          // (react-markdown, unified, remark, rehype, mdast, hast, micromark)
-          // Charts — admin dashboard only
-          if (id.includes("recharts") || id.includes("d3-")) {
-            return "vendor-charts";
-          }
-          // Radix UI primitives
-          if (id.includes("@radix-ui")) {
-            return "vendor-radix";
-          }
-          // Core React + router
-          if (
-            id.includes("react-dom") ||
-            id.includes("react-router") ||
-            id.includes("@remix-run")
-          ) {
+          // Core React — safe to isolate
+          if (id.includes("react-dom")) {
             return "vendor-react";
           }
         },
