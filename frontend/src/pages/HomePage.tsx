@@ -107,6 +107,7 @@ function CertificationCard({ cert }: { cert: Certificate }) {
 
 export default function HomePage() {
   const [settings, setSettings] = useState(defaultSiteSettings);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -123,7 +124,8 @@ export default function HomePage() {
   useEffect(() => {
     fetchSiteSettings(true)
       .then((data) => setSettings({ ...defaultSiteSettings, ...data }))
-      .catch(() => setSettings(defaultSiteSettings));
+      .catch(() => setSettings(defaultSiteSettings))
+      .finally(() => setSettingsLoading(false));
   }, []);
 
   const scrollToCertifications = () => {
@@ -175,6 +177,16 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (settingsLoading) return;
+    if (!settings.showOpenSource) {
+      setRepos([]);
+      setReposError(null);
+      setReposLoading(false);
+      return;
+    }
+
+    setReposLoading(true);
+
     const schedule = (fn: () => void) => {
       if (typeof window === "undefined") return fn();
       if ("requestIdleCallback" in window) {
@@ -196,7 +208,7 @@ export default function HomePage() {
         .catch((err: Error) => setReposError(err?.message || "Failed to load repositories"))
         .finally(() => setReposLoading(false));
     });
-  }, []);
+  }, [settings.showOpenSource, settingsLoading]);
 
   useEffect(() => {
     fetchCertificatesPublic()
@@ -416,29 +428,30 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Open Source */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto">
-          <SectionHeader title="Open Source" subtitle="Contributing to the community" />
-          <div className="grid md:grid-cols-2 gap-4">
-            {reposLoading && (
-              <>
-                <div className="h-32 rounded-xl border bg-muted animate-pulse" />
-                <div className="h-32 rounded-xl border bg-muted animate-pulse" />
-              </>
-            )}
-            {!reposLoading && repos.map((repo) => (
-              <RepoCard key={repo.id} repo={repo} />
-            ))}
-            {!reposLoading && repos.length === 0 && !reposError && (
-              <p className="text-muted-foreground">No repositories yet.</p>
+      {settings.showOpenSource && (
+        <section className="py-16 px-4">
+          <div className="container mx-auto">
+            <SectionHeader title="Open Source" subtitle="Contributing to the community" />
+            <div className="grid md:grid-cols-2 gap-4">
+              {reposLoading && (
+                <>
+                  <div className="h-32 rounded-xl border bg-muted animate-pulse" />
+                  <div className="h-32 rounded-xl border bg-muted animate-pulse" />
+                </>
+              )}
+              {!reposLoading && repos.map((repo) => (
+                <RepoCard key={repo.id} repo={repo} />
+              ))}
+              {!reposLoading && repos.length === 0 && !reposError && (
+                <p className="text-muted-foreground">No repositories yet.</p>
+              )}
+            </div>
+            {reposError && !reposLoading && (
+              <p className="text-sm text-destructive mt-3">{reposError}</p>
             )}
           </div>
-          {reposError && !reposLoading && (
-            <p className="text-sm text-destructive mt-3">{reposError}</p>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
 
       <CallToActionSection {...recruiterCtaPreset} className="mt-0 mb-16" />
 

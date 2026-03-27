@@ -7,17 +7,28 @@ if (!rawConnectionString) {
   throw new Error("DATABASE_URL is required to initialize PrismaClient");
 }
 
-// Allow self-signed certs (e.g., Supabase pooler). For stricter security, provide a CA instead.
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+const connectionUrl = new URL(rawConnectionString);
+const isProduction = process.env.NODE_ENV === "production";
+const currentSslMode = connectionUrl.searchParams.get("sslmode")?.toLowerCase();
+const useSsl = currentSslMode !== "disable";
+const allowInsecureTls =
+  currentSslMode === "no-verify" ||
+  process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "false" ||
+  !isProduction;
 
-// Force sslmode=no-verify if not provided to avoid self-signed cert errors (Supabase/RDS)
-const url = new URL(rawConnectionString);
-if (!url.searchParams.has("sslmode")) {
-  url.searchParams.set("sslmode", "no-verify");
+if (useSsl && allowInsecureTls && currentSslMode !== "no-verify") {
+  connectionUrl.searchParams.set("sslmode", "no-verify");
 }
-const connectionString = url.toString();
 
-const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
+const connectionString = connectionUrl.toString();
+
+// Local Supabase/Postgres setups can fail certificate verification on dev machines.
+// Keep production strict by default and only relax verification outside production
+// (or when explicitly requested via DATABASE_SSL_REJECT_UNAUTHORIZED=false).
+const pool = new Pool({
+  connectionString,
+  ...(useSsl ? { ssl: { rejectUnauthorized: !allowInsecureTls } } : {}),
+});
 const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({ adapter });

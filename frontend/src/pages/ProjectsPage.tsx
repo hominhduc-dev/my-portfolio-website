@@ -13,10 +13,13 @@ import { fetchProjectsPublic, getAllTags, type Project } from "@/data/projects";
 import { fetchReposPublic, type Repo } from "@/data/repos";
 import { recruiterCtaPreset } from "@/data/recruiterCta";
 import { setPageMeta } from "@/lib/seo";
+import { defaultSiteSettings, fetchSiteSettings } from "@/data/siteSettings";
 
 const ITEMS_PER_PAGE = 6;
 
 export default function ProjectsPage() {
+  const [settings, setSettings] = useState(defaultSiteSettings);
+  const [settingsLoading, setSettingsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -26,6 +29,13 @@ export default function ProjectsPage() {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [reposLoading, setReposLoading] = useState(true);
   const [reposError, setReposError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchSiteSettings(true)
+      .then((data) => setSettings({ ...defaultSiteSettings, ...data }))
+      .catch(() => setSettings(defaultSiteSettings))
+      .finally(() => setSettingsLoading(false));
+  }, []);
 
   useEffect(() => {
     fetchProjectsPublic()
@@ -38,6 +48,16 @@ export default function ProjectsPage() {
   }, []);
 
   useEffect(() => {
+    if (settingsLoading) return;
+    if (!settings.showOpenSource) {
+      setRepos([]);
+      setReposError(null);
+      setReposLoading(false);
+      return;
+    }
+
+    setReposLoading(true);
+
     fetchReposPublic()
       .then((data) => {
         setRepos(data);
@@ -45,7 +65,7 @@ export default function ProjectsPage() {
       })
       .catch((err: any) => setReposError(err?.message || "Failed to load repositories"))
       .finally(() => setReposLoading(false));
-  }, []);
+  }, [settings.showOpenSource, settingsLoading]);
 
   useEffect(() => {
     setPageMeta({
@@ -111,26 +131,28 @@ export default function ProjectsPage() {
 
           <PaginationBar currentPage={page} totalPages={totalPages} onPageChange={setPage} />
 
-          <div className="mt-16">
-            <SectionHeader title="Open Source" subtitle="Contributions to the community" />
-            <div className="grid md:grid-cols-2 gap-4">
-              {reposLoading && (
-                <>
-                  <div className="h-32 rounded-xl border bg-muted animate-pulse" />
-                  <div className="h-32 rounded-xl border bg-muted animate-pulse" />
-                </>
-              )}
-              {!reposLoading && repos.map((repo) => (
-                <RepoCard key={repo.id} repo={repo} />
-              ))}
-              {!reposLoading && repos.length === 0 && !reposError && (
-                <p className="text-muted-foreground col-span-full">No repositories yet.</p>
+          {settings.showOpenSource && (
+            <div className="mt-16">
+              <SectionHeader title="Open Source" subtitle="Contributions to the community" />
+              <div className="grid md:grid-cols-2 gap-4">
+                {reposLoading && (
+                  <>
+                    <div className="h-32 rounded-xl border bg-muted animate-pulse" />
+                    <div className="h-32 rounded-xl border bg-muted animate-pulse" />
+                  </>
+                )}
+                {!reposLoading && repos.map((repo) => (
+                  <RepoCard key={repo.id} repo={repo} />
+                ))}
+                {!reposLoading && repos.length === 0 && !reposError && (
+                  <p className="text-muted-foreground col-span-full">No repositories yet.</p>
+                )}
+              </div>
+              {reposError && !reposLoading && (
+                <p className="text-sm text-destructive mt-3">{reposError}</p>
               )}
             </div>
-            {reposError && !reposLoading && (
-              <p className="text-sm text-destructive mt-3">{reposError}</p>
-            )}
-          </div>
+          )}
 
           <CallToActionSection {...recruiterCtaPreset} className="mt-16 px-0" />
         </div>

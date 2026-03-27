@@ -22,14 +22,14 @@ export const defaultAboutData: AboutData = {
   longStory: ``,
   education: [
     {
-      id: '',
+      id: 'education-placeholder-1',
       title: '',
       organization: '',
       period: '',
       description: '',
     },
     {
-      id: '',
+      id: 'education-placeholder-2',
       title: 'B',
       organization: '',
       period: '',
@@ -38,21 +38,21 @@ export const defaultAboutData: AboutData = {
   ],
   experience: [
     {
-      id: '',
+      id: 'experience-placeholder-1',
       title: '',
       organization: '',
       period: '',
       description: '',
     },
     {
-      id: '',
+      id: 'experience-placeholder-2',
       title: '',
       organization: '',
       period: '',
       description: '',
     },
     {
-      id: '',
+      id: 'experience-placeholder-3',
       title: '',
       organization: '',
       period: '',

@@ -8,6 +8,7 @@ export interface Repo {
   stars: number;
   forks: number;
   url: string;
+  visible?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -20,6 +21,7 @@ const mapRepo = (r: Partial<Repo>): Repo => ({
   stars: r.stars ?? 0,
   forks: r.forks ?? 0,
   url: r.url ?? "",
+  visible: r.visible ?? true,
   createdAt: r.createdAt,
   updatedAt: r.updatedAt,
 });

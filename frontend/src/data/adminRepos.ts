@@ -11,12 +11,20 @@ const mapRepo = (r: any): AdminRepo => ({
   stars: r.stars ?? 0,
   forks: r.forks ?? 0,
   url: r.url ?? "",
+  visible: r.visible ?? true,
   createdAt: r.createdAt,
   updatedAt: r.updatedAt,
 });
 
 export async function fetchRepos(): Promise<AdminRepo[]> {
   const res = await apiFetch<AdminRepo[]>("/api/repos");
+  return (res.data ?? []).map(mapRepo);
+}
+
+export async function syncGithubRepos(): Promise<AdminRepo[]> {
+  const res = await apiFetch<AdminRepo[]>("/api/repos/sync-github", {
+    method: "POST",
+  });
   return (res.data ?? []).map(mapRepo);
 }
 

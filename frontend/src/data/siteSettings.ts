@@ -2,6 +2,7 @@ export interface SiteSettings {
   siteTitle: string;
   tagline: string;
   heroIntro: string;
+  showOpenSource: boolean;
   socialLinks: {
     github: string;
     linkedin: string;
@@ -19,6 +20,7 @@ type BackendSiteSettings = {
   siteTitle: string;
   tagline: string;
   heroIntro: string;
+  showOpenSource: boolean;
   socialGithub: string;
   socialLinkedin: string;
   socialEmail: string;
@@ -32,6 +34,7 @@ export const defaultSiteSettings: SiteSettings = {
   siteTitle: 'minhduc.dev',
   tagline: '',
   heroIntro: 'I build beautiful, scalable web applications with modern technologies.',
+  showOpenSource: true,
   socialLinks: {
     github: 'https://github.com/minhduc',
     linkedin: 'https://linkedin.com/in/minhduc',
@@ -53,6 +56,7 @@ const toFrontend = (data?: BackendSiteSettings | null): SiteSettings => {
     siteTitle: data.siteTitle,
     tagline: data.tagline,
     heroIntro: data.heroIntro,
+    showOpenSource: data.showOpenSource ?? true,
     socialLinks: {
       github: data.socialGithub,
       linkedin: data.socialLinkedin,
@@ -71,6 +75,7 @@ const toBackend = (settings: SiteSettings): BackendSiteSettings => ({
   siteTitle: settings.siteTitle,
   tagline: settings.tagline,
   heroIntro: settings.heroIntro,
+  showOpenSource: settings.showOpenSource,
   socialGithub: settings.socialLinks.github,
   socialLinkedin: settings.socialLinks.linkedin,
   socialEmail: settings.socialLinks.email,

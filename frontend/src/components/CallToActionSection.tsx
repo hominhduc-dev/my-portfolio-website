@@ -34,7 +34,7 @@ const actionClasses: Record<NonNullable<CtaAction["variant"]>, string> = {
   hero:
     "liquid-glass-hover shadow-lg shadow-accent/30 dark:shadow-primary/25 hover:text-foreground dark:hover:text-white",
   "hero-outline":
-    "liquid-glass-hover shadow-lg shadow-primary/20 dark:shadow-primary/25 hover:text-foreground dark:hover:text-white",
+    "liquid-glass-hover shadow-lg shadow-accent/20 dark:shadow-accent/20 hover:text-foreground dark:hover:text-white",
 };
 
 export function CallToActionSection({

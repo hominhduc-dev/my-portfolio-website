@@ -34,7 +34,7 @@ export default function AdminSettingsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setSettings((prev) => {
       const keys = field.split('.');
       if (keys.length === 1) {
@@ -148,6 +148,21 @@ export default function AdminSettingsPage() {
                 onChange={(e) => handleChange('heroIntro', e.target.value)}
                 rows={3}
               />
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border p-4">
+              <input
+                id="showOpenSource"
+                type="checkbox"
+                checked={settings.showOpenSource}
+                onChange={(e) => handleChange('showOpenSource', e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-input"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="showOpenSource">Show Open Source section</Label>
+                <p className="text-sm text-muted-foreground">
+                  Toggle GitHub/Open Source repositories on the public homepage and projects page.
+                </p>
+              </div>
             </div>
           </FormSection>
 

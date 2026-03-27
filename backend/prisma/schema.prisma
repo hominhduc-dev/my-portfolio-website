@@ -44,6 +44,7 @@ model SiteSetting {
   siteTitle      String
   tagline        String
   heroIntro      String
+  showOpenSource Boolean  @default(true)
   socialGithub   String
   socialLinkedin String
   socialEmail    String
@@ -126,6 +127,7 @@ model Repo {
   language    String   @default("")
   stars       Int      @default(0)
   forks       Int      @default(0)
+  visible     Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

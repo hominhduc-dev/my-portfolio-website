@@ -74,7 +74,17 @@ router.get("/posts", async (_req, res) => {
 
 router.get("/repos", async (_req, res) => {
   try {
+    const settings = await prisma.siteSetting.findUnique({
+      where: { id: 1 },
+      select: { showOpenSource: true },
+    });
+
+    if (settings?.showOpenSource === false) {
+      return sendOk(res, []);
+    }
+
     const repos = await prisma.repo.findMany({
+      where: { visible: true },
       orderBy: { stars: "desc" },
     });
     return sendOk(res, repos);

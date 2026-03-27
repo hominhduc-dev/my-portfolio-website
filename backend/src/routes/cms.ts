@@ -5,6 +5,16 @@ import { sendError, sendOk } from "../utils/response";
 
 const router = express.Router();
 
+type GithubRepo = {
+  name: string;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  stargazers_count: number;
+  forks_count: number;
+  private: boolean;
+};
+
 const parseCertificateInput = (data: any) => {
   const year = Number(data?.year);
 
@@ -39,6 +49,7 @@ const defaultSiteSettings = {
   siteTitle: "minhduc.dev",
   tagline: "Back-end Developer & Automation",
   heroIntro: "I build beautiful, scalable web applications with modern technologies.",
+  showOpenSource: true,
   socialGithub: "https://github.com/ducdeptrai052",
   socialLinkedin: "https://www.linkedin.com/in/duc-ho-073aa8153/",
   socialEmail: "hominhduc.dev@gmail.com",
@@ -91,6 +102,82 @@ const defaultAbout = {
   ],
 };
 
+function extractGithubUsername(value?: string | null) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (!trimmed.startsWith("http")) {
+    return trimmed.replace(/^@/, "").replace(/^\/+|\/+$/g, "") || null;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (!/github\.com$/i.test(url.hostname)) return null;
+    const [username] = url.pathname.split("/").filter(Boolean);
+    return username ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function syncGithubRepos() {
+  const settings = await prisma.siteSetting.findUnique({
+    where: { id: 1 },
+    select: { socialGithub: true },
+  });
+
+  const username =
+    extractGithubUsername(process.env.GITHUB_USERNAME) ||
+    extractGithubUsername(process.env.GITHUB_REPOS_URL) ||
+    extractGithubUsername(settings?.socialGithub) ||
+    extractGithubUsername(defaultSiteSettings.socialGithub);
+
+  if (!username) {
+    throw new Error("GitHub username is not configured");
+  }
+
+  const response = await fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=updated`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "portfolio-admin-sync",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub sync failed with status ${response.status}`);
+  }
+
+  const repos = (await response.json()) as GithubRepo[];
+
+  for (const repo of repos) {
+    if (repo.private) continue;
+
+    await prisma.repo.upsert({
+      where: { name: repo.name },
+      update: {
+        description: repo.description ?? "",
+        url: repo.html_url,
+        language: repo.language ?? "",
+        stars: repo.stargazers_count ?? 0,
+        forks: repo.forks_count ?? 0,
+        updatedAt: new Date(),
+      },
+      create: {
+        name: repo.name,
+        description: repo.description ?? "",
+        url: repo.html_url,
+        language: repo.language ?? "",
+        stars: repo.stargazers_count ?? 0,
+        forks: repo.forks_count ?? 0,
+        visible: true,
+      },
+    });
+  }
+
+  return prisma.repo.findMany({ orderBy: { stars: "desc" } });
+}
+
 router.use(requireAuth);
 
 // Settings
@@ -108,6 +195,7 @@ router.put("/settings", async (req, res) => {
     siteTitle: data.siteTitle,
     tagline: data.tagline,
     heroIntro: data.heroIntro,
+    showOpenSource: data.showOpenSource ?? true,
     socialGithub: data.socialGithub,
     socialLinkedin: data.socialLinkedin,
     socialEmail: data.socialEmail,
@@ -427,6 +515,15 @@ router.get("/repos", async (_req, res) => {
   return sendOk(res, repos);
 });
 
+router.post("/repos/sync-github", async (_req, res) => {
+  try {
+    const repos = await syncGithubRepos();
+    return sendOk(res, repos, "GitHub repositories synced");
+  } catch (error: any) {
+    return sendError(res, error?.message || "Failed to sync GitHub repositories", 400);
+  }
+});
+
 router.get("/repos/:id", async (req, res) => {
   const repo = await prisma.repo.findUnique({ where: { id: req.params.id } });
   if (!repo) return sendError(res, "Not found", 404);
@@ -444,6 +541,7 @@ router.post("/repos", async (req, res) => {
         language: data.language ?? "",
         stars: data.stars ?? 0,
         forks: data.forks ?? 0,
+        visible: data.visible ?? true,
       },
     });
     return sendOk(res, created, "Repo created");
@@ -467,6 +565,7 @@ router.put("/repos/:id", async (req, res) => {
         language: data.language ?? "",
         stars: data.stars ?? 0,
         forks: data.forks ?? 0,
+        visible: data.visible ?? true,
         updatedAt: new Date(),
       },
     });
